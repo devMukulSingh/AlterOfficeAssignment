@@ -9,7 +9,7 @@ export const urlSchema = z.object({
     }).max(200,{
         message:"max 200 characters allowed"
     }),
-    customAlias: z.string().trim().max(200, {
+    alias: z.string().trim().max(200, {
         message: "max 200 characters allowed"
     }).optional(),
     topic: z.string().trim().max(200, {

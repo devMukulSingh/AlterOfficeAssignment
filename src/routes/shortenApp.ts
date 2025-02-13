@@ -3,10 +3,13 @@ import { urlSchema } from "../lib/schema.js";
 import namor from "namor";
 import { BASE_URL_SERVER, prisma } from "../lib/constants.js";
 import { Prisma } from "@prisma/client";
+import { UAParser } from "ua-parser-js";
+import { getConnInfo } from "hono/cloudflare-workers";
+
 
 const shortenApp = new Hono();
 
- function generateRandomAlias(){
+function generateRandomAlias() {
     const alias = namor.default.generate({ words: 1 });
     return alias;
 }
@@ -22,34 +25,33 @@ shortenApp.post('/:userId', async (c) => {
             error: parsedBody.error.errors.map(err => err.message)
         }, 400)
     }
-    const { longUrl, customAlias, topic } = parsedBody.data
+    const { longUrl, alias, topic } = parsedBody.data
 
     const existingUrl = await prisma.url.findFirst({
-        where:{
+        where: {
             longUrl
         }
     })
 
-    if (existingUrl){
+    if (existingUrl) {
         return c.json({
-            msg:"Url Already exists",
+            msg: "Url Already exists",
             shortUrl: existingUrl.shortUrl
-        },200)
+        }, 200)
     }
 
-    let alias = customAlias;
-
-    if (!customAlias || customAlias==="") {
-        alias = generateRandomAlias()
+    let generatedAlias = alias;
+    if (!alias || alias === "") {
+        generatedAlias = generateRandomAlias()
     }
 
-    alias = alias + Date.now().toString().slice(8)
-    const shortUrl = `${BASE_URL_SERVER}/shorten/${alias}`
-    
+    generatedAlias = generatedAlias + Date.now().toString().slice(8)
+    const shortUrl = `${BASE_URL_SERVER}/shorten/${generatedAlias}`
+
     try {
         await prisma.url.create({
             data: {
-                customAlias: alias ,
+                customAlias: generatedAlias,
                 longUrl,
                 shortUrl,
                 topic,
@@ -59,21 +61,69 @@ shortenApp.post('/:userId', async (c) => {
         return c.json({
             msg: "Url generated successfully",
             shortUrl
-        })
+        },201)
     }
     catch (e) {
-        if(e instanceof Prisma.PrismaClientKnownRequestError){
-            if(e.code === "P2002"){
-                
+        if (e instanceof Prisma.PrismaClientKnownRequestError) {
+            if (e.code === "P2002") {
+
                 return c.json({
-                    error:"Alias already exists, try another"
-                },409)
+                    error: "Alias already exists, try another"
+                }, 409)
             }
         }
         return c.json({
-            error:"Internal server errror"
-        },500)
+            error: "Internal server errror"
+        }, 500)
     }
+})
+
+shortenApp.get('/:alias', async (c) => {
+
+
+    //TODO had to add rate limiter
+    const { alias } = c.req.param()
+
+    try {
+
+        const existingUrl = await prisma.url.findFirst({
+            where: {
+                customAlias: alias,
+            }
+        })
+
+        if (!existingUrl) {
+            return c.json({
+                error: "Not found",
+            }, 404)
+        }
+
+        const userAgent = c.req.header("User-Agent")
+        const parser = new UAParser(userAgent)
+        const result = parser.getResult()
+        const info = getConnInfo(c) // info is `ConnInfo`
+
+       await prisma.analytics.create({
+        data:{
+            clientIp:info.remote.address || "",
+            device:result.device.type || "Desktop",
+            operatingSystem:result.os.name || "",
+            url:{
+                connect:{
+                    id:existingUrl.id
+                }
+            }
+        }
+       })
+
+        return c.redirect(existingUrl.longUrl)
+
+    }
+    catch (e) {
+        console.log(e);
+        return c.json({}, 500)
+    }
+
 })
 
 

@@ -4,10 +4,10 @@ import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import authApp from './routes/auth.js'
 import shortenApp from './routes/shortenApp.js'
+import { type HttpBindings } from '@hono/node-server'; // import bindings
+const app = new Hono<{ Bindings: HttpBindings }>()
 
-const app = new Hono()
-
-app.use("/api/*",cors())
+app.use(cors())
 
 app.get("/" , (c) => c.json("hello"))
 
