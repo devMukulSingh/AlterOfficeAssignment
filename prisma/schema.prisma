@@ -10,9 +10,51 @@ datasource db {
 
 
 model User{
-  id                String               @id @default(auto()) @map("_id") @db.ObjectId
+  id                String                @id @default(auto()) @map("_id") @db.ObjectId
   name              String
   email             String                @unique
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
+  urls              Url[]                 @relation("userToUrls")
+}
+
+model Url{
+  id                String                @id@default(auto())@map("_id") @db.ObjectId
+  longUrl           String
+  customAlias       String
+  topic             String?               @default("")
+  shortUrl          String
+  analytics         Analytics?             @relation("urlToAnalytics")
+  userId            String                 @db.ObjectId
+  user              User                   @relation("userToUrls",fields: [userId],references: [id])
+  createdAt         DateTime               @default(now())
+
+}
+
+model Analytics{
+  id                          String                    @id@default(auto())@map("_id") @db.ObjectId
+  urlId                       String                    @unique@db.ObjectId
+  url                         Url                       @relation("urlToAnalytics",references: [id],fields: [urlId])
+  totalClicks                 Int                       @default(0)
+  uniqueUsers                 Int                       @default(0)
+  operatingSystems            Os[]                      @relation("analyticsToOs")
+  devices                     Device[]                  @relation("analyticsToDevices")           
+}
+
+model Os{
+  id                String                   @id@default(auto())@map("_id") @db.ObjectId
+  name              String
+  uniqueClicks      Int                       @default(0)
+  uniqueUsers       Int                       @default(0)
+  analyticsId       String                    @db.ObjectId
+  analytics         Analytics                 @relation("analyticsToOs",references: [id],fields: [analyticsId])
+}
+
+model Device{
+  id                String                    @id@default(auto())@map("_id") @db.ObjectId
+  name              String
+  uniqueClicks      Int                        @default(0)
+  uniqueUsers       Int                       @default(0)
+  analyticsId       String                    @db.ObjectId
+  analytics         Analytics                 @relation("analyticsToDevices",references: [id],fields: [analyticsId])
 }

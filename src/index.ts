@@ -3,6 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import authApp from './routes/auth.js'
+import shortenApp from './routes/shortenApp.js'
 
 const app = new Hono()
 
@@ -13,6 +14,7 @@ app.get("/" , (c) => c.json("hello"))
 app.use(logger())
 
 app.route("/auth",authApp)
+app.route("/api/shorten",shortenApp)
 
 const port = 3000
 
