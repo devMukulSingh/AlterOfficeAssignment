@@ -20,8 +20,8 @@ model User{
 
 model Url{
   id                String                @id@default(auto())@map("_id") @db.ObjectId
-  longUrl           String
-  customAlias       String
+  longUrl           String                @unique
+  customAlias       String                @unique
   topic             String?               @default("")
   shortUrl          String
   analytics         Analytics?             @relation("urlToAnalytics")
