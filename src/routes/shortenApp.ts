@@ -119,7 +119,7 @@ shortenApp.get('/:alias', async (c) => {
 
             const deviceType = result.device.type || "Desktop";
             const clientIp = getConnInfo(c).remote.address || "192.0.0." + Math.ceil(Math.random() * 10) // info is `ConnInfo`
-            console.log(clientIp);
+
             await prisma.analytics.create({
                 data: {
                     clientIp,
