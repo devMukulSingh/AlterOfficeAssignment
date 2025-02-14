@@ -1,19 +1,12 @@
 import { Hono } from "hono";
 import { urlSchema } from "../lib/schema.js";
-import namor from "namor";
 import { BASE_URL_SERVER, prisma } from "../lib/constants.js";
 import { Prisma } from "@prisma/client";
 import { UAParser } from "ua-parser-js";
 import { getConnInfo } from "hono/cloudflare-workers";
-
+import { generateRandomAlias } from "../lib/helpers.js";
 
 const shortenApp = new Hono();
-
-function generateRandomAlias() {
-    const alias = namor.default.generate({ words: 1 });
-    return alias;
-}
-
 
 shortenApp.post('/:userId', async (c) => {
 

@@ -3,7 +3,7 @@ import { Hono } from 'hono'
 import { cors } from 'hono/cors'
 import { logger } from 'hono/logger'
 import authApp from './routes/auth.js'
-import shortenApp from './routes/shortenApp.js'
+import shortenApp from './routes/shorten.js'
 import { type HttpBindings } from '@hono/node-server'; // import bindings
 import analyticsApp from './routes/analytics.js'
 const app = new Hono<{ Bindings: HttpBindings }>()
