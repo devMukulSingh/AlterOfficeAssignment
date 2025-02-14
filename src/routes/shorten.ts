@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client";
 import { UAParser } from "ua-parser-js";
 import { getConnInfo } from "hono/cloudflare-workers";
 import { generateRandomAlias } from "../lib/helpers.js";
+import { redisClient } from "../lib/redisClient.js";
 
 const shortenApp = new Hono();
 
@@ -85,11 +86,29 @@ shortenApp.post('/:userId', async (c) => {
 
 shortenApp.get('/:alias', async (c) => {
 
-    //TODO had to add rate limiter
+    const clientIp = getConnInfo(c).remote.address || "192.0.0.1";
+    const requests = await redisClient.incr(clientIp)
+
+    let ttl;
+    if(requests === 1){
+        await redisClient.expire(clientIp,60)
+        ttl = 60;
+    }
+    else{
+        ttl = await redisClient.ttl(clientIp)
+    }
+
+    if(requests > 20){
+        return c.json({
+            error:"Too many requests"
+        },429)
+    }
+    console.log(ttl);
     const fetchMode = c.req.header("Sec-Purpose")
-    console.log(fetchMode, "fetchMode");
+ 
     // preventing from runnin twice
     if (!fetchMode) {
+
         const { alias } = c.req.param()
 
         try {
