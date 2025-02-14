@@ -27,9 +27,7 @@ model Url{
   analytics         Analytics[]            @relation("urlToAnalytics")
   userId            String                 @db.ObjectId
   user              User                   @relation("userToUrls",fields: [userId],references: [id])
-  totalClicks                 Int                       @default(0)
   createdAt         DateTime               @default(now())
-
 }
 
 model Analytics{
@@ -37,11 +35,49 @@ model Analytics{
   urlId                       String                    @db.ObjectId
   clientIp                    String    
   url                         Url                       @relation("urlToAnalytics",references: [id],fields: [urlId])
-  operatingSystem             String                     
-  device                      String                            
+  os                          String
+  device                      String
+  createdAt                   DateTime                  @default(now())
+  // os             Os?                          @relation("analyticsToOs")
+  // device                      Device?                      @relation("analyticsToDevice")                            
   // totalClicks                 Int                       @default(0)
   // uniqueUsers                 Int                       @default(0)
 }
+
+// model Device{
+//   id                String                   @id@default(auto())@map("_id") @db.ObjectId
+//   // clientIp           String    
+//   name              String                       
+//   analyticsId       String?                    @db.ObjectId@unique
+//   analytics         Analytics?                @relation("analyticsToDevice",references: [id],fields: [analyticsId])
+// }
+
+// model Os{
+//   id                String                   @id@default(auto())@map("_id") @db.ObjectId
+//   name              String                           
+//   // clientIp          String                 
+//   analyticsId       String?                    @db.ObjectId@unique
+//   analytics         Analytics?                @relation("analyticsToOs",references: [id],fields: [analyticsId])
+// }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 // model Os{
 //   id                String                   @id@default(auto())@map("_id") @db.ObjectId

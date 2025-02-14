@@ -27,6 +27,18 @@ shortenApp.post('/:userId', async (c) => {
     }
     const { longUrl, alias, topic } = parsedBody.data
 
+    const existingUser = await prisma.user.findFirst({
+        where: {
+            id: userId
+        }
+    })
+
+    if (!existingUser) {
+        return c.json({
+            error: "Unauthenticated, user not found"
+        }, 403)
+    }
+
     const existingUrl = await prisma.url.findFirst({
         where: {
             longUrl
@@ -61,7 +73,7 @@ shortenApp.post('/:userId', async (c) => {
         return c.json({
             msg: "Url generated successfully",
             shortUrl
-        },201)
+        }, 201)
     }
     catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError) {
@@ -80,49 +92,57 @@ shortenApp.post('/:userId', async (c) => {
 
 shortenApp.get('/:alias', async (c) => {
 
-
     //TODO had to add rate limiter
-    const { alias } = c.req.param()
+    const fetchMode = c.req.header("Sec-Purpose")
+    console.log(fetchMode, "fetchMode");
+    // preventing from runnin twice
+    if (!fetchMode) {
+        const { alias } = c.req.param()
 
-    try {
+        try {
 
-        const existingUrl = await prisma.url.findFirst({
-            where: {
-                customAlias: alias,
-            }
-        })
-
-        if (!existingUrl) {
-            return c.json({
-                error: "Not found",
-            }, 404)
-        }
-
-        const userAgent = c.req.header("User-Agent")
-        const parser = new UAParser(userAgent)
-        const result = parser.getResult()
-        const info = getConnInfo(c) // info is `ConnInfo`
-
-       await prisma.analytics.create({
-        data:{
-            clientIp:info.remote.address || "",
-            device:result.device.type || "Desktop",
-            operatingSystem:result.os.name || "",
-            url:{
-                connect:{
-                    id:existingUrl.id
+            const existingUrl = await prisma.url.findFirst({
+                where: {
+                    customAlias: alias,
                 }
+            })
+
+            if (!existingUrl) {
+                return c.json({
+                    error: "Not found",
+                }, 404)
             }
+
+            const userAgent = c.req.header("User-Agent")
+            const parser = new UAParser(userAgent)
+            const result = parser.getResult()
+
+            const deviceType = result.device.type || "Desktop";
+            const clientIp = getConnInfo(c).remote.address || "192.0.0." + Math.ceil(Math.random() * 10) // info is `ConnInfo`
+            console.log(clientIp);
+            await prisma.analytics.create({
+                data: {
+                    clientIp,
+                    device:deviceType,
+                    os:result.os.name || "",
+                    url: {
+                        connect: {
+                            id: existingUrl.id
+                        }
+                    },
+                }
+
+            })
+
+            return c.redirect(existingUrl.longUrl)
+
         }
-       })
-
-        return c.redirect(existingUrl.longUrl)
-
+        catch (e) {
+            console.log(e);
+            return c.json({}, 500)
+        }
     }
-    catch (e) {
-        console.log(e);
-        return c.json({}, 500)
-    }
+    return c.json({});
 
 })
 

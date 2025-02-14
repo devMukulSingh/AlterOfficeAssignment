@@ -10,6 +10,7 @@
     "@hono/node-server": "^1.13.8",
     "@prisma/client": "6.3.1",
     "axios": "^1.7.9",
+    "date-fns": "^4.1.0",
     "hono": "^4.6.20",
     "namor": "^3.0.1",
     "prisma": "^6.3.1",
