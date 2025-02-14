@@ -1,13 +1,17 @@
 import { Hono } from "hono";
 import { urlSchema } from "../lib/schema.js";
 import { BASE_URL_SERVER, prisma } from "../lib/constants.js";
-import { Prisma } from "@prisma/client";
+import { Prisma, type Url } from "@prisma/client";
 import { UAParser } from "ua-parser-js";
-import { getConnInfo } from "hono/cloudflare-workers";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { generateRandomAlias } from "../lib/helpers.js";
 import { redisClient } from "../lib/redisClient.js";
+import { rateLimiter } from "../middleware/rateLimiter.js";
 
 const shortenApp = new Hono();
+
+shortenApp.use('/api/shorten/:alias', rateLimiter)
+
 
 shortenApp.post('/:userId', async (c) => {
 
@@ -84,59 +88,42 @@ shortenApp.post('/:userId', async (c) => {
     }
 })
 
-shortenApp.get('/:alias', async (c) => {
+shortenApp.get('/:alias', rateLimiter, async (c) => {
 
-    const clientIp = getConnInfo(c).remote.address || "192.0.0.1";
-    const requests = await redisClient.incr(clientIp)
+    const { alias } = c.req.param()
+    try {
+        let existingUrl: Url | null = JSON.parse(await redisClient.get(alias) || "null")
 
-    let ttl;
-    if(requests === 1){
-        await redisClient.expire(clientIp,60)
-        ttl = 60;
-    }
-    else{
-        ttl = await redisClient.ttl(clientIp)
-    }
-
-    if(requests > 20){
-        return c.json({
-            error:"Too many requests"
-        },429)
-    }
-    console.log(ttl);
-    const fetchMode = c.req.header("Sec-Purpose")
- 
-    // preventing from runnin twice
-    if (!fetchMode) {
-
-        const { alias } = c.req.param()
-
-        try {
-
-            const existingUrl = await prisma.url.findFirst({
+        if (!existingUrl) {
+            existingUrl = await prisma.url.findFirst({
                 where: {
                     customAlias: alias,
                 }
             })
-
             if (!existingUrl) {
                 return c.json({
                     error: "Not found",
                 }, 404)
             }
+            await redisClient.set(existingUrl.customAlias, JSON.stringify(existingUrl));
+        }
 
+
+        // preventing from running twice as google prefeches url on pasting on the searchbar
+        const fetchMode = c.req.header("Sec-Purpose")
+        // console.log(fetchMode);
+        if (fetchMode !== "prefetch;prerender") {
             const userAgent = c.req.header("User-Agent")
             const parser = new UAParser(userAgent)
             const result = parser.getResult()
-
             const deviceType = result.device.type || "Desktop";
             const clientIp = getConnInfo(c).remote.address || "192.0.0." + Math.ceil(Math.random() * 10) // info is `ConnInfo`
 
             await prisma.analytics.create({
                 data: {
                     clientIp,
-                    device:deviceType,
-                    os:result.os.name || "",
+                    device: deviceType,
+                    os: result.os.name || "",
                     url: {
                         connect: {
                             id: existingUrl.id
@@ -145,16 +132,16 @@ shortenApp.get('/:alias', async (c) => {
                 }
 
             })
-
-            return c.redirect(existingUrl.longUrl)
-
         }
-        catch (e) {
-            console.log(e);
-            return c.json({}, 500)
-        }
+
+        return c.redirect(existingUrl.longUrl)
+
     }
-    return c.json({});
+    catch (e) {
+        console.log(e);
+        return c.json({}, 500)
+    }
+
 
 })
 
