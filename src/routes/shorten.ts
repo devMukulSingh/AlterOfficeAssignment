@@ -129,6 +129,7 @@ shortenApp.get('/:alias', rateLimiter, async (c) => {
         const fetchMode = c.req.header("Sec-Purpose")
         // console.log(fetchMode);
         if (fetchMode !== "prefetch;prerender") {
+            redisClient.expire(`aliasAnalytics-${alias}`,0) 
             const userAgent = c.req.header("User-Agent")
             const parser = new UAParser(userAgent)
             const result = parser.getResult()
