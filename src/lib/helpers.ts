@@ -40,7 +40,7 @@ export function getOsTypeArray(analyticsData:Analytics[]){
     for (const os of uniqueOperatingSystems.values()) {
         countMap.set(os, (countMap.get(os) || 0) + 1)
     }
-    const osTypeArray = Array.from(countMap.entries()).map(([os, uniqueUsers]) => ({ os, uniqueUsers }))
+    const osTypeArray = Array.from(countMap.entries()).map(([os, uniqueUsers]) => ({ os, uniqueUsers,uniqueClicks:uniqueUsers }))
     return osTypeArray;
 }
 
@@ -51,7 +51,7 @@ export function getDeviceTypeArray(analyticsData: Analytics[]) {
     for (const deviceType of uniqueDevices.values()) {
         countMap.set(deviceType, (countMap.get(deviceType) || 0) + 1)
     }
-    const deviceTypeArray = Array.from(countMap.entries()).map(([deviceName, uniqueUsers]) => ({ deviceName, uniqueUsers }))
+    const deviceTypeArray = Array.from(countMap.entries()).map(([deviceName, uniqueUsers]) => ({ deviceName,uniqueClicks:uniqueUsers, uniqueUsers }))
     return deviceTypeArray;
 }
 

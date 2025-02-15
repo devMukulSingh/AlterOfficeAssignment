@@ -15,11 +15,10 @@ app.get("/" , (c) => c.json("hello"))
 
 app.use(logger())
 
-
 app.route("/auth",authApp)
 app.route("/api/shorten",shortenApp)
 app.route("/api/analytics",analyticsApp)
-const port = 3000
+const port = Number(process.env.PORT)  || 3000
 
 console.log(`Server is running on http://localhost:${port}`)
 

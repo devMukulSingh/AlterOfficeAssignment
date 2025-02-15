@@ -10,6 +10,16 @@ const analyticsApp = new Hono();
 analyticsApp.get("/:userId/alias/:alias", async (c) => {
 
     const { alias, userId } = c.req.param()
+    const exisitingUser = await prisma.user.findFirst({
+        where:{
+            id:userId
+        }
+    })
+    if(!exisitingUser){
+        return c.json({
+            error:"Unauthenticated, user not found"
+        },403)
+    }
     const analyticsData = await prisma.analytics.findMany({
         where: {
             url: {
@@ -18,7 +28,7 @@ analyticsApp.get("/:userId/alias/:alias", async (c) => {
             },
         },
     })
-
+    const uniqueUsers = new Map( analyticsData.map( ana => [ana.clientIp,ana.id])).size
     const clicksByDate = getClicksByDateLast7Days(analyticsData)
     const osType = getOsTypeArray(analyticsData)
     const deviceType = getDeviceTypeArray(analyticsData)
@@ -27,7 +37,8 @@ analyticsApp.get("/:userId/alias/:alias", async (c) => {
         osType,
         deviceType,
         totalClicks: analyticsData.length,
-        clicksByDate
+        clicksByDate,
+        uniqueUsers
     }, 200)
 })
 
@@ -110,7 +121,7 @@ analyticsApp.get("/:userId/overall", async (c) => {
 
     const analyticsData = urlsArray.flatMap(url => url.analytics);
 
-
+    const uniqueUsers = new Map(analyticsData.map( ana => [ana.clientIp,ana.id])).size
     const osTypeArray = getOsTypeArray(analyticsData)
     const deviceTypeArray = getDeviceTypeArray(analyticsData);
     const clicksByDate = getClicksByDate(analyticsData)
@@ -120,7 +131,8 @@ analyticsApp.get("/:userId/overall", async (c) => {
         totalClicks: analyticsData.length,
         osType: osTypeArray,
         deviceType: deviceTypeArray,
-        clicksByDate
+        clicksByDate,
+        uniqueUsers
     }, 200)
 })
 
