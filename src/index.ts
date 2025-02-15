@@ -11,7 +11,15 @@ const app = new Hono<{ Bindings: HttpBindings }>()
 
 app.use(cors())
 
-app.get("/" , (c) => c.json("hello"))
+app.get("/" , (c) => c.redirect("/auth/google-auth"))
+
+app.get("/:userId", (c) => {
+  const { userId } = c.req.param()
+  return c.html(
+    `<h1>Hey! this is your userId -> ${userId}. Request with your user id to generate short url or get analytics data </h1>`
+  )
+})
+
 
 app.use(logger())
 
@@ -23,6 +31,8 @@ const port = Number(process.env.PORT)  || 3000
 console.log(`Server is running on http://localhost:${port}`)
 
 serve({
-  fetch: app.fetch,
+  fetch: app.fetch, 
   port
 })
+
+

@@ -13,7 +13,7 @@ type TProfile = {
     name: string,
     email: string,
     id: string,
-    picture:string,
+    picture: string,
     profile: string
 }
 
@@ -49,32 +49,33 @@ authApp.get('/google/callback', async (c) => {
         const { data: profile } = await axios.get('https://www.googleapis.com/oauth2/v1/userinfo', {
             headers: { Authorization: `Bearer ${access_token}` },
         });
-        const { email,  name } = profile as TProfile
- 
+        const { email, name } = profile as TProfile
+
         try {
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    email
+                }
+            })
+            if (existingUser) return c.redirect(`/${existingUser.id}`)
             const newUser = await prisma.user.create({
                 data: {
                     email,
                     name,
                 }
             })
-            c.redirect("/")
+            c.redirect(`/${newUser.id}`)
             return c.json({
                 msg: "User created sucessfully",
-         
+
             })
         }
-        catch (e:any) {
+        catch (e: any) {
             console.log(e.message);
-            if(e instanceof Prisma.PrismaClientKnownRequestError){
-                if(e.code==="P2002"){
-                    return c.redirect("/")
-                }
-            }
             c.redirect("/google-auth")
             return c.json({
-                error:"Internal server error"
-            },500)
+                error: "Internal server error"
+            }, 500)
         }
     } catch (error: any) {
         console.log('Error:', error.response.data.error);
