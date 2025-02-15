@@ -24,25 +24,40 @@ shortenApp.post('/:userId', async (c) => {
         }, 400)
     }
     const { longUrl, alias, topic } = parsedBody.data
-
-    const existingUser = await prisma.user.findFirst({
-        where: {
-            id: userId
-        }
-    })
+    //redis caching
+    let existingUser = JSON.parse(await redisClient.get(`user-${userId}`) || "null");
 
     if (!existingUser) {
-        return c.json({
-            error: "Unauthenticated, user not found"
-        }, 403)
+        existingUser = await prisma.user.findFirst({
+            where: {
+                id: userId
+            }
+        })
+        if (!existingUser) {
+            return c.json({
+                error: "Unauthenticated, user not found"
+            }, 403)
+        }
+        await redisClient.set(`user-${existingUser.id}`, JSON.stringify(existingUser))
+        await redisClient.expire(`user-${existingUser.id}`, 5 * 60)
     }
 
-    const existingUrl = await prisma.url.findFirst({
-        where: {
-            longUrl
-        }
-    })
-
+    //redis caching
+    let existingUrl: Url | null = JSON.parse(await redisClient.get(`existingUrl-${longUrl}`) || "null");
+    console.log({existingUrl});
+    
+    //if existingUrl is not in the cache, then find in the db
+    if (!existingUrl) {
+        existingUrl = await prisma.url.findFirst({
+            where: {
+                longUrl
+            }
+        })
+        //if got in the db, set it in cache
+        if(existingUrl)
+        await redisClient.set(`existingUrl-${longUrl}`,JSON.stringify(existingUrl))
+        await redisClient.expire(`existingUrl-${longUrl}`, 60 * 5)
+    }
     if (existingUrl) {
         return c.json({
             msg: "Url Already exists",
@@ -106,6 +121,7 @@ shortenApp.get('/:alias', rateLimiter, async (c) => {
                 }, 404)
             }
             await redisClient.set(existingUrl.customAlias, JSON.stringify(existingUrl));
+            await redisClient.expire(existingUrl.customAlias, 60 * 5)
         }
 
 
