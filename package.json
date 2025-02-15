@@ -3,9 +3,8 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "start": "vercel dev",
+    "start": "tsx src/index.ts",
     "gen": "bun x prisma generate",
-       "deploy": "vercel",
     "mig": "bun x prisma db push"
   },
   "dependencies": {
