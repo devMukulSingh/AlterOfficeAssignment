@@ -84,7 +84,7 @@ shortenApp.post('/:userId', async (c) => {
     const date = Date.now().toString()
 
     generatedAlias = generatedAlias + date.slice(0, 4) + date.slice(-4)
-    const shortUrl = `${BASE_URL_SERVER}/shorten/${generatedAlias}`
+    const shortUrl = `${BASE_URL_SERVER}/api/shorten/${generatedAlias}`
 
     try {
         await prisma.url.create({

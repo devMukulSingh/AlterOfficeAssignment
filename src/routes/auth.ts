@@ -1,13 +1,13 @@
 import axios, { type AxiosResponse } from "axios";
 import { Hono } from "hono";
-import { prisma } from "../lib/constants.js";
+import { BASE_URL_SERVER, prisma } from "../lib/constants.js";
 import { Prisma } from "@prisma/client";
 
 const authApp = new Hono();
 
 const CLIENT_ID = process.env.CLIENT_ID;
 const CLIENT_SECRET = process.env.CLIENT_SECRET;
-const REDIRECT_URI = 'http://localhost:3000/auth/google/callback';
+const REDIRECT_URI = `${BASE_URL_SERVER}/auth/google/callback`;
 
 type TProfile = {
     name: string,
