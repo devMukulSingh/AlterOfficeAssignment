@@ -4,8 +4,8 @@ WORKDIR /app
 
 COPY . /app/
 
-RUN bun install
+RUN npm install
 
 EXPOSE 3000
 
-CMD [ "bun","run","start" ]
+CMD [ "npm","run","start" ]
