@@ -12,7 +12,6 @@ const shortenApp = new Hono();
 
 shortenApp.use('/api/shorten/:alias', rateLimiter)
 
-
 shortenApp.post('/:userId', async (c) => {
 
     const { userId } = c.req.param()
@@ -24,6 +23,7 @@ shortenApp.post('/:userId', async (c) => {
         }, 400)
     }
     const { longUrl, alias, topic } = parsedBody.data
+
     //redis caching
     let existingUser = JSON.parse(await redisClient.get(`user-${userId}`) || "null");
 
@@ -42,10 +42,22 @@ shortenApp.post('/:userId', async (c) => {
         await redisClient.expire(`user-${existingUser.id}`, 5 * 60)
     }
 
+
+    //validating if the custom alias given by the user already exists in the db, as alias should be unique
+    if (alias && alias !== "") {
+        const isAliasExists = await prisma.url.findFirst({
+            where: {
+                customAlias: alias
+            }
+        })
+        if (isAliasExists) return c.json({
+            error: "Alias already exists, try another"
+        }, 409)
+    }
+
     //redis caching
     let existingUrl: Url | null = JSON.parse(await redisClient.get(`existingUrl-${longUrl}`) || "null");
-    console.log({existingUrl});
-    
+
     //if existingUrl is not in the cache, then find in the db
     if (!existingUrl) {
         existingUrl = await prisma.url.findFirst({
@@ -54,9 +66,9 @@ shortenApp.post('/:userId', async (c) => {
             }
         })
         //if got in the db, set it in cache
-        if(existingUrl)
-        await redisClient.set(`existingUrl-${longUrl}`,JSON.stringify(existingUrl))
-        await redisClient.expire(`existingUrl-${longUrl}`, 60 * 5)
+        if (existingUrl)
+            await redisClient.set(`existingUrl-${longUrl}`, JSON.stringify(existingUrl))
+            await redisClient.expire(`existingUrl-${longUrl}`, 60 * 5)
     }
     if (existingUrl) {
         return c.json({
@@ -69,8 +81,9 @@ shortenApp.post('/:userId', async (c) => {
     if (!alias || alias === "") {
         generatedAlias = generateRandomAlias()
     }
+    const date = Date.now().toString()
 
-    generatedAlias = generatedAlias + Date.now().toString().slice(8)
+    generatedAlias = generatedAlias + date.slice(0, 4) + date.slice(-4)
     const shortUrl = `${BASE_URL_SERVER}/shorten/${generatedAlias}`
 
     try {
@@ -91,7 +104,6 @@ shortenApp.post('/:userId', async (c) => {
     catch (e) {
         if (e instanceof Prisma.PrismaClientKnownRequestError) {
             if (e.code === "P2002") {
-
                 return c.json({
                     error: "Alias already exists, try another"
                 }, 409)
@@ -107,6 +119,7 @@ shortenApp.get('/:alias', rateLimiter, async (c) => {
 
     const { alias } = c.req.param()
     try {
+        //redis cache
         let existingUrl: Url | null = JSON.parse(await redisClient.get(alias) || "null")
 
         if (!existingUrl) {
@@ -129,7 +142,11 @@ shortenApp.get('/:alias', rateLimiter, async (c) => {
         const fetchMode = c.req.header("Sec-Purpose")
         // console.log(fetchMode);
         if (fetchMode !== "prefetch;prerender") {
-            redisClient.expire(`aliasAnalytics-${alias}`,0) 
+            await Promise.all([
+                redisClient.expire(`aliasAnalytics-${alias}`, 0),
+                redisClient.expire(`overallAnalytics-${existingUrl.userId}`, 0),
+                redisClient.expire(`topicAnalytics-${existingUrl.topic}-${existingUrl.userId}`, 0)
+            ])
             const userAgent = c.req.header("User-Agent")
             const parser = new UAParser(userAgent)
             const result = parser.getResult()

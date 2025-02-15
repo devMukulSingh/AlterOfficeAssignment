@@ -46,7 +46,7 @@ analyticsApp.get("/:userId/alias/:alias", async (c) => {
         uniqueUsers
     }
     await redisClient.set(`aliasAnalytics-${alias}`, JSON.stringify(computedAnalytics))
-    await redisClient.expire(`aliasAnalytics-${alias}`, 60 *5 )
+    await redisClient.expire(`aliasAnalytics-${alias}`, 60 * 5)
 
 
     return c.json(computedAnalytics, 200)
@@ -85,11 +85,15 @@ analyticsApp.get("/:userId/topic/:topic", async (c) => {
         urls: []
     }, 200)
 
+    //redis cache
+    let computedAnalytics = JSON.parse(await redisClient.get(`topicAnalytics-${topic}-${userId}`) || "null")
+    console.log({computedAnalytics});
+    if (computedAnalytics) return c.json(computedAnalytics, 200)
+
     const totalClicks = urlsArray.reduce((prev, curr) => prev + curr.analytics.length, 0)
     const analyticsData = urlsArray.flatMap(url => url.analytics)
     const uniqueUsers = new Map(analyticsData.map(ana => [ana.clientIp, ana.id])).size
     const clicksByDate = getClicksByDate(analyticsData)
-
     const urls = []
     for (let url of urlsArray) {
         const uniqueUsers = new Map(url.analytics.map(ana => [ana.clientIp, ana.id])).size
@@ -99,12 +103,16 @@ analyticsApp.get("/:userId/topic/:topic", async (c) => {
             uniqueUsers
         })
     }
-    return c.json({
+    computedAnalytics = {
         totalClicks,
         uniqueUsers,
         clicksByDate,
         urls
-    }, 200)
+    }
+    await redisClient.set(`topicAnalytics-${topic}-${userId}`, computedAnalytics)
+    await redisClient.expire(`topicAnalytics-${topic}-${userId}`, 60 * 5)
+
+    return c.json(computedAnalytics, 200)
 })
 
 analyticsApp.get("/:userId/overall", async (c) => {
@@ -131,19 +139,26 @@ analyticsApp.get("/:userId/overall", async (c) => {
 
     const analyticsData = urlsArray.flatMap(url => url.analytics);
 
+    //redis cache
+    let computedAnalytics = JSON.parse(await redisClient.get(`overallAnalytics-${userId}`) || "null");
+    if (computedAnalytics) return c.json(computedAnalytics, 200)
+
     const uniqueUsers = new Map(analyticsData.map(ana => [ana.clientIp, ana.id])).size
     const osTypeArray = getOsTypeArray(analyticsData)
     const deviceTypeArray = getDeviceTypeArray(analyticsData);
     const clicksByDate = getClicksByDate(analyticsData)
-
-    return c.json({
+    computedAnalytics = {
         totalUrls: urlsArray.length,
         totalClicks: analyticsData.length,
         osType: osTypeArray,
         deviceType: deviceTypeArray,
         clicksByDate,
         uniqueUsers
-    }, 200)
+    }
+    await redisClient.set(`overallAnalytics-${userId}`, JSON.stringify(computedAnalytics))
+    await redisClient.expire(`overallAnalytics-${userId}`, 60 * 5)
+
+    return c.json(computedAnalytics, 200)
 })
 
 export default analyticsApp;
