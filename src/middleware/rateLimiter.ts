@@ -5,18 +5,15 @@ import type { Next } from "hono/types";
 
 export async function rateLimiter(c: Context, next: Next) {
 
-    const ip = c.req.header('')
-    const clientIp = getConnInfo(c).remote.address
-    console.log(c.req.raw.headers.get('x-real-ip'),"real ip");
-    console.log(c.req.raw.headers.get('c.env.ip'), "c.env.ip"); 
-   console.log(c.req.raw.headers.get('x-forwarded-for'),"x-forwaded-for");
-    console.log(c.req.header());
+    // c.req.raw.headers.get('true-client-ip')-> for deployment on render only( render uses cloudfare servers internally )
+    const clientIp = process.env.NODE_ENV==='production' ? c.req.raw.headers.get('true-client-ip') : "::1"
+
     if (!clientIp) {
         return c.json({
             error: "Cannot get client IP"
         }, 400)
     }
-    console.log({ clientIp });
+
     const requests = await redisClient.incr(clientIp)
 
     let ttl;
