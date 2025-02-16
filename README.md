@@ -1,34 +1,28 @@
-```
-npm install
-npm run dev
-```
 
-```
-open http://localhost:3000
-```
 Custom URL Shortener API Documentation
 The Custom URL Shortener API allows users to create short URLs from long, complex URLs, manage these links under specific topics, and view detailed analytics about link performance. The API leverages Google Sign-In for user authentication, includes rate limiting on URL creation, and is dockerized for cloud deployment and scalability.
 
 Table of Contents
-Authentication
-Short URL API
-Create Short URL
-Redirect Short URL
-Analytics
-Get URL Analytics
-Get Topic-Based Analytics
-Get Overall Analytics
-Rate Limiting & Error Handling
-Deployment & Scalability
-Authentication
-Google Sign-In
+  Authentication
+  Short URL API
+  Create Short URL
+  Redirect Short URL
+  Analytics
+  Get URL Analytics
+  Get Topic-Based Analytics
+  Get Overall Analytics
+  Rate Limiting & Error Handling
+  Deployment & Scalability
+  Authentication
+  Google Sign-In
+  
 Endpoint: /api/auth/google
 
 Method: GET
 
 Description: Initiates the Google Sign-In flow to authenticate the user. The user is redirected to Google’s authentication page.
 
-Endpoint: /api/auth/google/callback
+Endpoint: /api/
 
 Method: GET
 

@@ -7,14 +7,35 @@ import { getConnInfo } from "@hono/node-server/conninfo";
 import { generateRandomAlias } from "../lib/helpers.js";
 import { redisClient } from "../lib/redisClient.js";
 import { rateLimiter } from "../middleware/rateLimiter.js";
+import { validateUser } from "../middleware/validateUser.js";
 
 const shortenApp = new Hono();
+shortenApp.use('/api/shorten/:userId',validateUser)
 
 shortenApp.use('/api/shorten/:alias', rateLimiter)
 
 shortenApp.post('/:userId', async (c) => {
 
     const { userId } = c.req.param()
+
+    //redis caching
+    // let existingUser = JSON.parse(await redisClient.get(`user-${userId}`) || "null");
+
+    // if (!existingUser) {
+    //     existingUser = await prisma.user.findFirst({
+    //         where: {
+    //             id: userId
+    //         }
+    //     })
+    //     if (!existingUser) {
+    //         return c.json({
+    //             error: "Unauthenticated, user not found"
+    //         }, 403)
+    //     }
+    //     await redisClient.set(`user-${existingUser.id}`, JSON.stringify(existingUser))
+    //     await redisClient.expire(`user-${existingUser.id}`, 5 * 60)
+    // }
+
     const body = await c.req.json();
     const parsedBody = urlSchema.safeParse(body);
     if (!parsedBody.success) {
@@ -24,23 +45,6 @@ shortenApp.post('/:userId', async (c) => {
     }
     const { longUrl, alias, topic } = parsedBody.data
 
-    //redis caching
-    let existingUser = JSON.parse(await redisClient.get(`user-${userId}`) || "null");
-
-    if (!existingUser) {
-        existingUser = await prisma.user.findFirst({
-            where: {
-                id: userId
-            }
-        })
-        if (!existingUser) {
-            return c.json({
-                error: "Unauthenticated, user not found"
-            }, 403)
-        }
-        await redisClient.set(`user-${existingUser.id}`, JSON.stringify(existingUser))
-        await redisClient.expire(`user-${existingUser.id}`, 5 * 60)
-    }
 
 
     //validating if the custom alias given by the user already exists in the db, as alias should be unique

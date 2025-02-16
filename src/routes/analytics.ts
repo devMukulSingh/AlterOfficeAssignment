@@ -1,26 +1,17 @@
 import { Hono } from "hono";
 import { prisma } from "../lib/constants.js";
-import { format } from "date-fns"
-import type { Analytics } from "@prisma/client";
 import { getClicksByDate, getClicksByDateLast7Days, getDeviceTypeArray, getOsTypeArray } from "../lib/helpers.js";
 import { redisClient } from "../lib/redisClient.js";
+import { validateUser } from "../middleware/validateUser.js";
 
 const analyticsApp = new Hono();
 
+analyticsApp.use("/:userId/*",validateUser)
 
 analyticsApp.get("/:userId/alias/:alias", async (c) => {
 
     const { alias, userId } = c.req.param()
-    const exisitingUser = await prisma.user.findFirst({
-        where: {
-            id: userId
-        }
-    })
-    if (!exisitingUser) {
-        return c.json({
-            error: "Unauthenticated, user not found"
-        }, 403)
-    }
+
     let computedAnalytics = JSON.parse(await redisClient.get(`aliasAnalytics-${alias}`) || "null")
 
 
@@ -56,17 +47,6 @@ analyticsApp.get("/:userId/topic/:topic", async (c) => {
 
     const { topic, userId } = c.req.param();
 
-    const isUserExists = await prisma.user.findFirst({
-        where: {
-            id: userId
-        }
-    })
-    if (!isUserExists) {
-        return c.json({
-            error: "Unauthenticated, user not found"
-        }, 403)
-    }
-
     const urlsArray = await prisma.url.findMany({
         where: {
             topic
@@ -87,7 +67,7 @@ analyticsApp.get("/:userId/topic/:topic", async (c) => {
 
     //redis cache
     let computedAnalytics = JSON.parse(await redisClient.get(`topicAnalytics-${topic}-${userId}`) || "null")
-    console.log({computedAnalytics});
+    console.log({ computedAnalytics });
     if (computedAnalytics) return c.json(computedAnalytics, 200)
 
     const totalClicks = urlsArray.reduce((prev, curr) => prev + curr.analytics.length, 0)
@@ -119,46 +99,44 @@ analyticsApp.get("/:userId/overall", async (c) => {
 
     const { userId } = c.req.param();
 
-    const isUserExists = await prisma.user.findFirst({
-        where: {
-            id: userId
+    try {
+        const urlsArray = await prisma.url.findMany({
+            where: {
+                userId
+            },
+            include: {
+                analytics: true,
+            }
+        })
+        const analyticsData = urlsArray.flatMap(url => url.analytics);
+
+        //redis cache
+        let computedAnalytics = JSON.parse(await redisClient.get(`overallAnalytics-${userId}`) || "null");
+        if (computedAnalytics) return c.json(computedAnalytics, 200)
+
+        const uniqueUsers = new Map(analyticsData.map(ana => [ana.clientIp, ana.id])).size
+        const osTypeArray = getOsTypeArray(analyticsData)
+        const deviceTypeArray = getDeviceTypeArray(analyticsData);
+        const clicksByDate = getClicksByDate(analyticsData)
+        computedAnalytics = {
+            totalUrls: urlsArray.length,
+            totalClicks: analyticsData.length,
+            osType: osTypeArray,
+            deviceType: deviceTypeArray,
+            clicksByDate,
+            uniqueUsers
         }
-    })
-    if (!isUserExists) return c.json({
-        error: "Unauthenticated, user not found"
-    }, 403)
+        await redisClient.set(`overallAnalytics-${userId}`, JSON.stringify(computedAnalytics))
+        await redisClient.expire(`overallAnalytics-${userId}`, 60 * 5)
 
-    const urlsArray = await prisma.url.findMany({
-        where: {
-            userId
-        },
-        include: {
-            analytics: true,
-        }
-    })
-
-    const analyticsData = urlsArray.flatMap(url => url.analytics);
-
-    //redis cache
-    let computedAnalytics = JSON.parse(await redisClient.get(`overallAnalytics-${userId}`) || "null");
-    if (computedAnalytics) return c.json(computedAnalytics, 200)
-
-    const uniqueUsers = new Map(analyticsData.map(ana => [ana.clientIp, ana.id])).size
-    const osTypeArray = getOsTypeArray(analyticsData)
-    const deviceTypeArray = getDeviceTypeArray(analyticsData);
-    const clicksByDate = getClicksByDate(analyticsData)
-    computedAnalytics = {
-        totalUrls: urlsArray.length,
-        totalClicks: analyticsData.length,
-        osType: osTypeArray,
-        deviceType: deviceTypeArray,
-        clicksByDate,
-        uniqueUsers
+        return c.json(computedAnalytics, 200)
     }
-    await redisClient.set(`overallAnalytics-${userId}`, JSON.stringify(computedAnalytics))
-    await redisClient.expire(`overallAnalytics-${userId}`, 60 * 5)
-
-    return c.json(computedAnalytics, 200)
+    catch (e:any) {
+        console.log(e.message);
+        return c.json({
+            error:"Internal server error" + e.message
+        },500)
+    }
 })
 
 export default analyticsApp;

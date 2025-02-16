@@ -1,7 +1,7 @@
 import axios, { type AxiosResponse } from "axios";
 import { Hono } from "hono";
 import { BASE_URL_SERVER, prisma } from "../lib/constants.js";
-import { Prisma } from "@prisma/client";
+ 
 
 const authApp = new Hono();
 
