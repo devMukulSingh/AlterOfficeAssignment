@@ -145,7 +145,8 @@ shortenApp.get('/:alias', rateLimiter, async (c) => {
             const parser = new UAParser(userAgent)
             const result = parser.getResult()
             const deviceType = result.device.type || "Desktop";
-            const clientIp = getConnInfo(c).remote.address || "192.0.0." + Math.ceil(Math.random() * 10) // info is `ConnInfo`
+            const clientIp = process.env.NODE_ENV === 'production' ? c.req.header('true-client-ip') : "::1"  
+            if(!clientIp) return c.json({error:"Client ip not found"},400)
 
             await prisma.analytics.create({
                 data: {

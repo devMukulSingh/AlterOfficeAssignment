@@ -6,9 +6,7 @@ export async function rateLimiter(c: Context, next: Next) {
 
     // c.req.raw.headers.get('true-client-ip')-> for deployment on render only( render uses cloudfare servers internally )
     const clientIp = process.env.NODE_ENV==='production' ? c.req.header('true-client-ip') : "::1"
-
-    console.log(c.req.raw.headers,"raw");
-    console.log(c.req.header(),"unraw");
+    
     if (!clientIp) {
         return c.json({
             error: "Cannot get client IP"
