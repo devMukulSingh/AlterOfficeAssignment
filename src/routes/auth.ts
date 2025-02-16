@@ -64,22 +64,16 @@ authApp.get('/google/callback', async (c) => {
                     name,
                 }
             })
-            c.redirect(`/${newUser.id}`)
-            return c.json({
-                msg: "User created sucessfully",
-
-            })
+            return c.redirect(`/${newUser.id}`)
         }
         catch (e: any) {
             console.log(e.message);
-            c.redirect("/google-auth")
             return c.json({
                 error: "Internal server error"
             }, 500)
         }
     } catch (error: any) {
         console.log('Error:', error.response.data.error);
-        c.redirect('/google-auth');
     }
 });
 
