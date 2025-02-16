@@ -56,7 +56,8 @@ analyticsApp.get("/:userId/topic/:topic", async (c) => {
     try {
         const urlsArray = await prisma.url.findMany({
             where: {
-                topic
+                topic,
+                userId
             },
             include: {
                 analytics: true
@@ -96,14 +97,14 @@ analyticsApp.get("/:userId/topic/:topic", async (c) => {
             clicksByDate,
             urls
         }
-        await redisClient.set(`topicAnalytics-${topic}-${userId}`, computedAnalytics)
+        await redisClient.set(`topicAnalytics-${topic}-${userId}`, JSON.stringify(computedAnalytics))
         await redisClient.expire(`topicAnalytics-${topic}-${userId}`, 60 * 5)
 
         return c.json(computedAnalytics, 200)
 
     }
     catch (e: any) {
-        console.log(e.message);
+        console.log(e);
         return c.json({
             error: "Inernal server error" + e
         }, 500)

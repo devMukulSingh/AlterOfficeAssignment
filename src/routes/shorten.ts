@@ -30,7 +30,7 @@ shortenApp.post('/:userId', async (c) => {
     if (alias && alias !== "") {
         const isAliasExists = await prisma.url.findFirst({
             where: {
-                customAlias: alias
+                customAlias: alias,
             }
         })
         if (isAliasExists) return c.json({
@@ -39,20 +39,21 @@ shortenApp.post('/:userId', async (c) => {
     }
 
     //redis caching
-    let existingUrl: Url | null = JSON.parse(await redisClient.get(`existingUrl-${longUrl}`) || "null");
+    let existingUrl: Url | null = JSON.parse(await redisClient.get(`existingUrl-${userId}-${longUrl}`) || "null");
 
     //if existingUrl is not in the cache, then find in the db
     try {
         if (!existingUrl) {
             existingUrl = await prisma.url.findFirst({
                 where: {
-                    longUrl
+                    longUrl,
+                    userId
                 }
             })
             //if got in the db, set it in cache
             if (existingUrl)
-                await redisClient.set(`existingUrl-${longUrl}`, JSON.stringify(existingUrl))
-            await redisClient.expire(`existingUrl-${longUrl}`, 60 * 5)
+                await redisClient.set(`existingUrl-${userId}-${longUrl}`, JSON.stringify(existingUrl))
+                await redisClient.expire(`existingUrl-${userId}-${longUrl}`, 60 * 5)
         }
         if (existingUrl) {
             return c.json({
@@ -66,9 +67,9 @@ shortenApp.post('/:userId', async (c) => {
             generatedAlias = generateRandomAlias()
         }
         const date = Date.now().toString()
-
         generatedAlias = generatedAlias + date.slice(0, 4) + date.slice(-4)
         const shortUrl = `${BASE_URL_SERVER}/api/shorten/${generatedAlias}`
+
 
         try {
             await prisma.url.create({
@@ -85,7 +86,8 @@ shortenApp.post('/:userId', async (c) => {
                 shortUrl
             }, 201)
         }
-        catch (e) {
+        catch (e:any) {
+            console.log(e.message);
             if (e instanceof Prisma.PrismaClientKnownRequestError) {
                 if (e.code === "P2002") {
                     return c.json({
