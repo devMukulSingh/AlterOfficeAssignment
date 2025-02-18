@@ -1,12 +1,18 @@
 import type { Context, Next } from "hono"
 import { prisma } from "../lib/constants.js"
-import { Prisma } from "@prisma/client"
+import { ObjectId } from 'mongodb';
 
-export async function validateUser(c: Context, next:Next) {
+
+export async function validateUser(c: Context, next: Next) {
     const { userId } = c.req.param()
-    try {
 
+    try {
         // more validation here .eg - token auth
+        if (!ObjectId.isValid(userId)) {
+            return c.json({
+                error: "Unauthenticated, invalid userId"
+            }, 403)
+        }
         const isUserExists = await prisma.user.findFirst({
             where: {
                 id: userId
@@ -17,14 +23,7 @@ export async function validateUser(c: Context, next:Next) {
         }, 403)
         await next()
     }
-    catch (e:any) {
+    catch (e: any) {
         console.log(e.message)
-        if (e instanceof Prisma.PrismaClientKnownRequestError) {
-            if (e.code === "P2023") {
-                return c.json({
-                    error: "Unauthenticated, invalid userId"
-                }, 403)
-            }
-        }
     }
 }

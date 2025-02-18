@@ -10,11 +10,10 @@ import { rateLimiter } from "../middleware/rateLimiter.js";
 import { validateUser } from "../middleware/validateUser.js";
 
 const shortenApp = new Hono();
-shortenApp.use('/api/shorten/:userId', validateUser)
+shortenApp.use('/create-shortUrl/:userId', validateUser)
+shortenApp.use('/:alias', rateLimiter)
 
-shortenApp.use('/api/shorten/:alias', rateLimiter)
-
-shortenApp.post('/:userId', async (c) => {
+    shortenApp.post('/create-shortUrl/:userId', async (c) => {
 
     const { userId } = c.req.param()
     const body = await c.req.json();
@@ -100,6 +99,7 @@ shortenApp.post('/:userId', async (c) => {
             }, 500)
         }
     }
+
     catch (e) {
         console.log(e);
         return c.json({
@@ -170,7 +170,6 @@ shortenApp.get('/:alias', rateLimiter, async (c) => {
         console.log(e);
         return c.json({}, 500)
     }
-
 
 })
 

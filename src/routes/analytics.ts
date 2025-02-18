@@ -52,7 +52,7 @@ analyticsApp.get("/:userId/alias/:alias", async (c) => {
 analyticsApp.get("/:userId/topic/:topic", async (c) => {
 
     const { topic, userId } = c.req.param();
-    
+
     try {
         const urlsArray = await prisma.url.findMany({
             where: {

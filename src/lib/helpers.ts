@@ -42,7 +42,7 @@ export function getOsTypeArray(analyticsData: Analytics[]) {
     for (const os of uniqueOperatingSystems.values()) {
         countMap.set(os, (countMap.get(os) || 0) + 1)
     }
-    const osTypeArray = Array.from(countMap.entries()).map(([os, uniqueUsers]) => ({ os, uniqueUsers, uniqueClicks: uniqueUsers }))
+    const osTypeArray = Array.from(countMap.entries()).map(([osName, uniqueUsers]) => ({ osName, uniqueUsers, uniqueClicks: uniqueUsers }))
     return osTypeArray;
 }
 

@@ -42,7 +42,7 @@ The Custom URL Shortener API allows users to create short URLs from long, comple
 
 #### 3. Create Short URL
 ```http
-  POST /api/shorten/:userId
+  POST /api/shorten/create-shorUrl/:userId
 ```
 - **Path Parameter:**
   userId (string) -> The userId of user who is requesting.

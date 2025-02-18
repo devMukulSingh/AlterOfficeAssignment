@@ -6,9 +6,11 @@
     "verbatimModuleSyntax": true,
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "jest"
     ],
     "jsx": "react-jsx",
     "jsxImportSource": "hono/jsx",
+
   }
 }
